@@ -4,7 +4,7 @@
 #include <map>
 #include <algorithm>
 #include <math.h>
-
+#include <vector>
 
 template <class T>
 inline void endswap(T *objp)
@@ -38,11 +38,13 @@ unordered_map<string, uint64_t > readids;
 
 int64_t prev_ts = -1;
 uint64_t reqs=0;
+uint64_t global_id=0;
 
 int main (int args, char *argv[]) {
     Req CurReq;
 
-
+    map<uint64_t, vector< pair <uint64_t,uint64_t>>> objs;
+//    map<uint64_t, vector<uint64_t>> objs_ids;
     for(int ag=1; ag<args; ag++) {
         //        cerr << argv[ag] << "\n";
 
@@ -74,8 +76,8 @@ int main (int args, char *argv[]) {
 
             endswap(&CurReq.oid);
             dist("oid",CurReq.oid);
-
-            endswap(&CurReq.readid1);
+            
+	    endswap(&CurReq.readid1);
             endswap(&CurReq.readid2);
             readids[to_string(CurReq.readid1)+to_string(CurReq.readid2)]++;
 
@@ -91,13 +93,52 @@ int main (int args, char *argv[]) {
             dist("jobid",CurReq.jobid);
 
             reqs++;
-            // if(reqs % 10000000 == 0) {
+	    uint64_t block_id = 0;
+	    if (objs.count(CurReq.oid)) {
+		    for (auto & it: objs[CurReq.oid]) {
+			double diff = it.first - CurReq.offset;
+//			cout << diff << "\n";
+			if (abs(diff) <= 4202528) {
+				block_id = it.second;
+				break;
+			}
+		    }
+		    if (block_id == 0) {
+		    	global_id++;
+			block_id = global_id;
+			objs[CurReq.oid].emplace_back(make_pair(CurReq.offset, block_id));
+		    }
+//		    objs_ids[CurReq.oid].emplace_back(block_id);
+	    } else {
+		    vector<pair<uint64_t,uint64_t>> v;
+		    global_id++;
+		    block_id = global_id;
+		    v.emplace_back(make_pair(CurReq.offset, block_id));
+		    objs[CurReq.oid] = v;
+//		    vector<uint64_t> v_id;
+//		    v_id.emplace_back(block_id);
+//		    objs_ids[CurReq.oid] = v_id;
+	    }
+
+
+	    cout << CurReq.ts << " " << block_id << " " << 1 << "\n";
+//            if(reqs % 10000000 == 0) {
             //     cerr << reqs << " " << CurReq.ts << " " << CurReq.oid << " " << CurReq.jobid << "\n";
-            // }
-        }
+//                 cout << CurReq.ts << " " << (uint64_t)CurReq.oid << " " << CurReq.length << "\n";
+//	    }
+//            cout << CurReq.offset << "\n";
+	}
         fh.close();
 
-        map<uint64_t, uint64_t> counts;
+/*	for (auto & pair: objs_ids) {
+		cout << "obj id " << pair.first;
+		for (auto & it: pair.second) {
+			cout << " pair " << it; // .first << " " << it.second;
+		}
+		cout << "\n";
+	}
+*/	
+/*        map<uint64_t, uint64_t> counts;
         for(auto & nd: dists) {
             if(nd.first == "ia" || nd.first == "offset" || nd.first == "length") {
                 for(auto & val: nd.second) {
@@ -122,6 +163,7 @@ int main (int args, char *argv[]) {
         }
 
         cout << argv[ag] << " reqs " << reqs << " " << reqs << "\n";
+*/
     }
     return 0;
     }
